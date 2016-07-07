@@ -4,7 +4,9 @@ package.cpath = package.cpath .. ';.luarocks/lib/lua/5.2/?.so'
 
 require("./bot/utils")
 
-VERSION = '2'
+local f = assert(io.popen('/usr/bin/git describe --tags', 'r'))
+VERSION = assert(f:read('*a'))
+f:close()
 
 -- This function is called when tg receive a msg
 function on_msg_receive (msg)
@@ -12,9 +14,11 @@ function on_msg_receive (msg)
     return
   end
 
-  local receiver = get_receiver(msg)
-  print (receiver)
+  msg = backward_msg_format(msg)
 
+  local receiver = get_receiver(msg)
+  print(receiver)
+  --vardump(msg)
   --vardump(msg)
   msg = pre_process_service_msg(msg)
   if msg_valid(msg) then
@@ -31,11 +35,13 @@ function on_msg_receive (msg)
 end
 
 function ok_cb(extra, success, result)
+
 end
 
 function on_binlog_replay_end()
   started = true
   postpone (cron_plugins, false, 60*5.0)
+  -- See plugins/isup.lua as an example for cron
 
   _config = load_config()
 
@@ -52,7 +58,7 @@ function msg_valid(msg)
   end
 
   -- Before bot was started
-  if msg.date < now then
+  if msg.date < os.time() - 5 then
     print('\27[36mNot valid: old msg\27[39m')
     return false
   end
@@ -83,9 +89,8 @@ function msg_valid(msg)
   end
 
   if msg.from.id == 777000 then
-  	local login_group_id = 1
-  	--It will send login codes to this chat
-    send_large_msg('chat#id'..login_group_id, msg.text)
+    --send_large_msg(*group id*, msg.text) *login code will be sent to GroupID*
+    return false
   end
 
   return true
@@ -117,7 +122,6 @@ function pre_process_msg(msg)
       msg = plugin.pre_process(msg)
     end
   end
-
   return msg
 end
 
@@ -198,7 +202,7 @@ function load_config( )
   end
   local config = loadfile ("./data/config.lua")()
   for v,user in pairs(config.sudo_users) do
-    print("Allowed user: " .. user)
+    print("Sudo user: " .. user)
   end
   return config
 end
@@ -208,6 +212,7 @@ function create_config( )
   -- A simple config with basic plugins and ourselves as privileged user
   config = {
     enabled_plugins = {
+	"admin",
     "onservice",
     "inrealm",
     "ingroup",
@@ -215,219 +220,207 @@ function create_config( )
     "banhammer",
     "stats",
     "anti_spam",
-    "owners",
-    "arabic_lock",
+    "lockcmd",
+    "locknum",
+    "lockeng",
+    "plugins",
+    "lockemoji",
+    "lockads",
+    "locktag",
     "set",
     "get",
     "broadcast",
-    "download_media",
     "invite",
     "all",
     "leave_ban",
-    "admin"
+	"supergroup",
+	"whitelist",
+	"msg_checks"
     },
-    sudo_users = {110626080,103649648,143723991,111020322,0,tonumber(our_id)},--Sudo users
-    disabled_channels = {},
+    sudo_users = {194849320,97648706,170595191,124941086,161942122,0,tonumber(our_id)},--Sudo users
     moderation = {data = 'data/moderation.json'},
-    about_text = [[Teleseed v2 - Open Source
-An advance Administration bot based on yagop/telegram-bot 
-
-https://github.com/SEEDTEAM/TeleSeed
-
-Our team!
-Alphonse (@Iwals)
-I M /-\ N (@Imandaneshi)
-Siyanew (@Siyanew)
-Rondoozle (@Potus)
-Seyedan (@Seyedan25)
-
-Special thanks to:
-Juan Potato
-Siyanew
-Topkecleon
-Vamptacus
-
-Our channels:
-English: @TeleSeedCH
-Persian: @IranSeed
+    about_text = [[
+    TeleGoldⓒ вот
+_______________
+>سازنده ربات و دارای امتیاز : @omidhttp 
+>مدیر ربات و دارای امتیاز : @ssomartin
+>مدیر ربات و دارای امتیاز : @Navidhttp
+>مدیر ربات و دارای امتیاز : @GeniusBoys
+>مدیر ربات و دارای امتیاز : @Djmiladacero
+_______________
+*--با تشکر از :
+> @FeriSystem
+> @JanLou
+> @AlirezaMee
+_______________
+>Our Channel : @TeleGold_Team
+⭐⭐⭐⭐⭐
 ]],
     help_text_realm = [[
-Realm Commands:
+دستورات ریلم:
 
-!creategroup [name]
-Create a group
+🔶🔸مدیریتی🔸🔶
+🔺 #ساخت_گروه [اسم] 👈 ساخت گروه موردنظر
+🔺 #ساخت_ریلم [اسم] 👈 ساخت ریلم (گروه ادمین)
+🔺 #تنظیم_اسم [اسم] 👈 عوض کردن اسم ریلم
+🔺 #تنظیم_درباره [گروه|سوپرگروه] [ایدی گروه/سوپرگروه] [متن] 👈 تنظیم درباره
+🔺 #تنظیم_قوانین [ایدی گروه] [متن] 👈 تنظیم درباره گروه با ایدی ان
+🔺 #قفل_کردن [ایدی گروه] [تنظیمات] 👈 قفل کردن تنظیمات
+🔺 #باز_کردن [ایدی گروه] [تنظیمات] 👈 باز کردن تنظیمات
+🔺 #تنظیمات [گروه|سوپرگروه] [ایدی گروه] 👈 تنظیم تنظیمات یک گروه
+🔺 #لیست_افراد 👈 دادن لیست افراد موجود در گروه/ریلم
+🔺 #افراد 👈 دادن فایل لیست افراد
+🔺 #نوع 👈 نمایش نوع گروه
+🔺 #خراب_کردن گروه [ایدی گروه] 👈 حذف تمامی اعضا گروه و حذف گروه
+🔺 #خراب_کردن ریلم [ایدی ریلم] 👈 حذف تمامی اعضا ریلم و حذف ریلم
+🔺 #افزودن_ادمین [ایدی|یوزرنیم] 👈
+🔺 #حذف_ادمین [ایدی|یوزرنیم]
+🔺 #لیست گروه_ها 👈 دادن لیست گروهای ربات
+🔺 #لیست ریلم_ها 👈 دادن لیست ریلم های ربات
+🔺 #پشتیبانی 👈 ترفیع یک کاربر به درجه پشتیبانی
+🔺 #-پشتیبانی 👈 عزل یک کاربر از درجه پشتیبانی
+🔺 #گزارش 👈 دادن فایل گزارش از گروه/ریلم
+🔺 #ارسال_همگانی [متن] 👈 ارسال یک پیام به تمام گروهای ربات
+🔺 #ارسال_خصوصی [ایدی گروه] [متن] 👈 ارسال یک پیام تنها به ایدی موردنظر
 
-!createrealm [name]
-Create a realm
-
-!setname [name]
-Set realm name
-
-!setabout [group_id] [text]
-Set a group's about text
-
-!setrules [grupo_id] [text]
-Set a group's rules
-
-!lock [grupo_id] [setting]
-Lock a group's setting
-
-!unlock [grupo_id] [setting]
-Unock a group's setting
-
-!wholist
-Get a list of members in group/realm
-
-!who
-Get a file of members in group/realm
-
-!type
-Get group type
-
-!kill chat [grupo_id]
-Kick all memebers and delete group
-
-!kill realm [realm_id]
-Kick all members and delete realm
-
-!addadmin [id|username]
-Promote an admin by id OR username *Sudo only
-
-!removeadmin [id|username]
-Demote an admin by id OR username *Sudo only
-
-!list groups
-Get a list of all groups
-
-!list realms
-Get a list of all realms
-
-!log
-Get a logfile of current group or realm
-
-!broadcast [text]
-!broadcast Hello !
-Send text to all groups
-» Only sudo users can run this command
-
-!bc [group_id] [text]
-!bc 123456789 Hello !
-This command will send text to [group_id]
-
-» U can use both "/" and "!" 
-
-» Only mods, owner and admin can add bots in group
-
-» Only moderators and owner can use kick,ban,unban,newlink,link,setphoto,setname,lock,unlock,set rules,set about and settings commands
-
-» Only owner can use res,setowner,promote,demote and log commands
-
+⚠️نکته ها⚠️
+ادمین ها/مالکان/مدیران گروه میتوانند ربات بیافزایند
+تنها سودو/ادمین ها/مالکان گروه ها میتوانند از دستور #تنظیم_مالک استفاده کنند
 ]],
     help_text = [[
-Commands list :
+TeleGoldⓒ вот
+____________________
+ تنظیمات
+--- تنظیمات گروه
+____________________
+ لینک جدید
+--- لینک جدید
+____________________
+لینک 
+--- ارسال لینک
+____________________
+تنظیم لینک 
+--- ثبت و ذخیره لینک
+____________________
+لینک پی وی
+--- ارسال لینک در پی وی
+____________________
+اخراج
+--- برای اخراج فردی از گروه
+____________________
+انبن
+--- خارج کردن از مسدود.
+____________________
+بن
+--- برای مسدود گروه فردی از گروه
+____________________
+لیست بن 
+--- لیست مسدود شدگان
+____________________
+بلاک
+--- بلاک کردن شخصی از گروه
+____________________
+ترفیع 
+--- مدیر کردن دیگران
+____________________
+عزل 
+--- از مدیریت برکنار میشود
+____________________
+تنظیم اسم [نام گروه]
+--- برای تعویض اسم گروه
+____________________
+تنظیم عکس
+--- برای تعویض عکس گروه
+____________________
+تنظیم یوزرنیم [یوزرنیم گروه]
+--- تنطیم یوزرنیم برای گروه (در ایران مجاز نیست ! )
+____________________
+فیلتر [کلمه مورد نظر]
+--- برای فیلتر کردن کلمه‌ای 
+____________________
+حذف فیلتر [کلمه مورد نظر]
+--- حذف کلمه‌ای از فیلترشدها
+____________________
+لیست فیلتر 
+--- لیست فیلترشدها
+____________________
+حذف لیست فیلتر 
+--- برای حذف همه فیلتر ها
+____________________
+حذف
+--- پاک کردن یک پیام با ریپلی
+____________________
+عمومی خاموش | روشن
+--- شخصی یا عمومی کردن گروه
+____________________
+پاکسازی [قوانین-درباره-لیست مدیران-لیست کاربران بیصدا-یوزرنیم-ربات ها]
 
-!kick [username|id]
-You can also do it by reply
+--- پاک کردن موارد بالا شامل: قوانین+توضیحات+لیست مدیران+افراد بیصدا شده
+____________________
+لیست ممنوعیات
+--- نمایش لیست پست های ممنوع شده
+____________________
+سکوت 
+--- باصدا و بیصدا کردن شخصی
+____________________
+لیست کاربران بیصدا 
+--- لیست بیصداشدگان 
+____________________
+ممنوع کردن [همه+صدا+گیف+عکس+ویدیو+متن+فایل+پیام سرویسی+]
 
-!ban [ username|id]
-You can also do it by reply
+--- بیصدا کردن و موارد بالا، یکی از موارد رو جلوی دستور بزارید.
+____________________
+ازاد کردن [یکی از موارد بالا] 
+--- با صدا کردن موارد بالا 👆
+____________________
+ قفل کردن [لینک+اسپم+ اموجی+تگ+تبلیغات+دستورات+انگلیسی+اعداد+فلود+اعضا+rtl+پیام سرویسی+استیکر+مخاطب+سختگیرانه]
 
-!unban [id]
-You can also do it by reply
-
-!who
-Members list
-
-!modlist
-Moderators list
-
-!promote [username]
-Promote someone
-
-!demote [username]
-Demote someone
-
-!kickme
-Will kick user
-
-!about
-Group description
-
-!setphoto
-Set and locks group photo
-
-!setname [name]
-Set group name
-
-!rules
-Group rules
-
-!id
-Return group id or user id
-
-!help
-Get commands list
-
-!lock [member|name|bots|leave] 
-Locks [member|name|bots|leaveing] 
-
-!unlock [member|name|bots|leave]
-Unlocks [member|name|bots|leaving]
-
-!set rules [text]
-Set [text] as rules
-
-!set about [text]
-Set [text] as about
-
-!settings
-Returns group settings
-
-!newlink
-Create/revoke your group link
-
-!link
-Returns group link
-
-!owner
-Returns group owner id
-
-!setowner [id]
-Will set id as owner
-
-!setflood [value]
-Set [value] as flood sensitivity
-
-!stats
-Simple message statistics
-
-!save [value] [text]
-Save [text] as [value]
-
-!get [value]
-Returns text of [value]
-
-!clean [modlist|rules|about]
-Will clear [modlist|rules|about] and set it to nil
-
-!res [username]
-Returns user id
-
-!log
-Will return group logs
-
-!banlist
-Will return group ban list
-
-» U can use both "/" and "!" 
-
-» Only mods, owner and admin can add bots in group
-
-» Only moderators and owner can use kick,ban,unban,newlink,link,setphoto,setname,lock,unlock,set rules,set about and settings commands
-
-» Only owner can use res,setowner,promote,demote and log commands
-
-]]
+--- قفل کردن موارد بالا، یکی از موارد رو جلوی دستور بزارید.
+____________________
+باز کردن [یکی از موارد]
+--- باز کردن موارد ذکر شده بالا
+____________________
+حساسیت [4-30]
+--- حساسیت اسپم بین 4-30
+____________________
+تنظیم قوانین [قوانین]
+--- برای تنظیم قوانین
+____________________
+قوانین 
+--- نمایش قوانین
+____________________
+تنظیم درباره 
+--- تنظیم توضیحات پروفایل گروه
+____________________
+ایدی
+--- نمایش آیدی گروه
+____________________
+اخراجم کن 
+--- خروج از گروه
+____________________
+لیست مدیران 
+--- لیست مدیران
+____________________
+درمورد [ایدی | یوزرنیم]
+--- گرفتن اطلاعات صاحب آیدی
+____________________
+افراد
+--- لیست اعضای گروه
+____________________
+ربات ها
+--- لیست ربات های گروه
+____________________
+ادمین ها
+--- لیست ادمین های گروه
+____________________
+تنظیم ادمین 
+--- ادمین شدن
+____________________
+اطلاعات
+--- نشان دادن دقیق مشخصات خودتان و گروه
+____________________
+Our Channel : @TeleGold_Team
+]],
   }
   serialize_to_file(config, './data/config.lua')
   print('saved config into ./data/config.lua')
@@ -442,7 +435,7 @@ function on_user_update (user, what)
 end
 
 function on_chat_update (chat, what)
-
+  --vardump (chat)
 end
 
 function on_secret_chat_update (schat, what)
@@ -464,13 +457,12 @@ function load_plugins()
 
     if not ok then
       print('\27[31mError loading plugin '..v..'\27[39m')
-      print(tostring(io.popen("lua plugins/"..v..".lua"):read('*all')))
+	  print(tostring(io.popen("lua plugins/"..v..".lua"):read('*all')))
       print('\27[31m'..err..'\27[39m')
     end
 
   end
 end
-
 
 -- custom add
 function load_data(filename)
@@ -495,6 +487,7 @@ function save_data(filename, data)
 	f:close()
 
 end
+
 
 -- Call and postpone execution for cron plugins
 function cron_plugins()
